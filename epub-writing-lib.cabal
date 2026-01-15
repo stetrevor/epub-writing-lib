@@ -64,12 +64,8 @@ library
 
   -- Modules exported by the library.
   exposed-modules:
-    Base
-    Doc
-    DryRun
     Epub
-    Run
-    Styles
+    Xml
 
   -- Modules included in this library but not exported.
   -- other-modules:
@@ -82,6 +78,7 @@ library
     , base       ^>=4.20.0.0
     , directory
     , filepath
+    , text
     , zip
 
   -- Directories containing source files.
