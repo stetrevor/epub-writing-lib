@@ -30,8 +30,8 @@ newtype S a = S (Text {- name -}, Text {- attribution -}, Text {- children -}) d
 
 view :: S a -> Text
 view (S (n, nvs, c)) 
-  | T.null c = "<" <> n <> nvs' <> "/>"
   | T.null n = c
+  | T.null c = "<" <> n <> nvs' <> "/>"
   | otherwise = "<" <> n <> nvs' <> ">" <> c <> "</" <> n <> ">"
   where
     nvs' = if T.null nvs then "" else " " <> nvs

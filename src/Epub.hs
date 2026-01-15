@@ -37,6 +37,24 @@ genEpub n md as xs ys = do
   createArchive p (addEntry Store "application/epub+zip" s)
   withArchive p (packDirRecur Deflate mkEntrySelector ".output-epub")
 
+genEpub' :: [Metadata] -> [Asset] -> [XhtmlFile] -> [SpineItem] -> IO ()
+genEpub' md as xs ys = do
+  -- Create output directory
+  createDirectoryIfMissing True ".output-epub"
+  removeAllFilesUnderDir ".output-epub"
+
+  -- Copy asset files
+  mapM_ (copy "./app/assets" ".output-epub/OEBPS" . T.unpack . ahref) as
+  -- Generate container.xml
+  genContainerXml
+  -- Generate content.opf
+  let md' = metadataXml md
+      ms = manifest as xs
+      sp = spine ys
+  genF "content.opf" (view (opf md' ms sp))
+  -- Generate xhtml files
+  mapM_ (\x -> genF (xhref x) (xtext x)) xs
+
 data Metadata = Title Text | Identifier Text | Lang Text | Modified Text | Rights Text | Creator Text | Version Text | SpecifiedFonts Bool | CoverImage Text
 
 data Asset = Asset { aid :: Text, ahref :: Text, amt :: Text }
