@@ -146,7 +146,7 @@ createFileWithDirs filePath content = do
 
 
 containerXml :: Xml repr => repr Element
-containerXml = doc $ element "container" .@ (attribute "version" .= value "1.0" # attribute "xmlns" .= value "urn:oasis:names:tc:opendocument:xmlns:container") .> element "rootfiles" .> element "rootfile" .@ (attribute "full-path" .= value "OEBPS/content.opf" # attribute "media-type" .= value "application/oebps-package+xml")
+containerXml = dcl $ element "container" .@ (attribute "version" .= value "1.0" # attribute "xmlns" .= value "urn:oasis:names:tc:opendocument:xmlns:container") .> element "rootfiles" .> element "rootfile" .@ (attribute "full-path" .= value "OEBPS/content.opf" # attribute "media-type" .= value "application/oebps-package+xml")
 
 spi :: Text -> SpineItem
 spi sid = SpineItem { sid, linear = True }
@@ -163,7 +163,7 @@ spine :: Xml repr => [SpineItem] -> repr Element
 spine = (element "spine" .>) . Prelude.foldr (#) Xml.empty . map spiXml
 
 opf :: Xml repr => repr Element -> repr Element -> repr Element -> repr Element
-opf md mf sp = doc $ element "package" .@ attrs [("xmlns","http://www.idpf.org/2007/opf"),("unique-identifier", "bookid-3.3.0") ,("version", "3.0") , ("prefix", "rendition: http://www.idpf.org/vocab/rendition/# ibooks: http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/") , ("xmlns:epub", "http://www.idpf.org/2007/ops") , ("xmlns:ibooks", "http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/")]
+opf md mf sp = dcl $ element "package" .@ attrs [("xmlns","http://www.idpf.org/2007/opf"),("unique-identifier", "bookid-3.3.0") ,("version", "3.0") , ("prefix", "rendition: http://www.idpf.org/vocab/rendition/# ibooks: http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/") , ("xmlns:epub", "http://www.idpf.org/2007/ops") , ("xmlns:ibooks", "http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/")]
     .> (md # mf # sp)
 
 metadataXml :: Xml repr => [Metadata] -> repr Element
