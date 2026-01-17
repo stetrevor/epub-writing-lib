@@ -12,14 +12,21 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO as T ( writeFile )
 
-genEpub :: String {- output epub name -} -> [Metadata] -> [Asset] -> [XhtmlFile] -> [SpineItem] -> IO ()
-genEpub n md as xs ys = do
+data Output = Output { odir :: String, oname :: String, oassets :: String }
+
+genEpub :: Output -> [Metadata] -> [Asset] -> [XhtmlFile] -> [SpineItem] -> IO ()
+genEpub o md as xs ys = do
+  genEpub' o md as xs ys
+  zipF o
+
+genEpub' :: Output -> [Metadata] -> [Asset] -> [XhtmlFile] -> [SpineItem] -> IO ()
+genEpub' o md as xs ys = do
   -- Create output directory
-  createDirectoryIfMissing True ".output-epub"
-  removeAllFilesUnderDir ".output-epub"
+  createDirectoryIfMissing True (odir o)
+  removeAllFilesUnderDir (odir o)
 
   -- Copy asset files
-  mapM_ (copy "./app/assets" ".output-epub/OEBPS" . T.unpack . ahref) as
+  mapM_ (copy (oassets o) (odir o </> "OEBPS") . T.unpack . ahref) as
   -- Generate container.xml
   genContainerXml
   -- Generate content.opf
@@ -29,63 +36,51 @@ genEpub n md as xs ys = do
   genF "content.opf" (view (opf md' ms sp))
   -- Generate xhtml files
   mapM_ (\x -> genF (xhref x) (xtext x)) xs
+
+zipF :: Output -> IO ()
+zipF o = do
   -- mimetype has to be the first entry of the zip file.
   s <- mkEntrySelector "mimetype"
   let
     p :: String
-    p = ".output-epub" </> (n <> ".epub")
+    p = oname o <> ".epub"
   createArchive p (addEntry Store "application/epub+zip" s)
   withArchive p (packDirRecur Deflate mkEntrySelector ".output-epub")
 
-genEpub' :: [Metadata] -> [Asset] -> [XhtmlFile] -> [SpineItem] -> IO ()
-genEpub' md as xs ys = do
-  -- Create output directory
-  createDirectoryIfMissing True ".output-epub"
-  removeAllFilesUnderDir ".output-epub"
-
-  -- Copy asset files
-  mapM_ (copy "./app/assets" ".output-epub/OEBPS" . T.unpack . ahref) as
-  -- Generate container.xml
-  genContainerXml
-  -- Generate content.opf
-  let md' = metadataXml md
-      ms = manifest as xs
-      sp = spine ys
-  genF "content.opf" (view (opf md' ms sp))
-  -- Generate xhtml files
-  mapM_ (\x -> genF (xhref x) (xtext x)) xs
-
 data Metadata = Title Text | Identifier Text | Lang Text | Modified Text | Rights Text | Creator Text | Version Text | SpecifiedFonts Bool | CoverImage Text
 
-data Asset = Asset { aid :: Text, ahref :: Text, amt :: Text }
+data Asset = Asset { aid :: Text, ahref :: Text, amt :: Text, ap :: Maybe Text }
 
 data XhtmlFile = XhtmlFile { xid :: Text, xhref :: Text, xp :: Maybe Text, xtext :: Text }
 
 data SpineItem = SpineItem { sid :: Text, linear :: Bool }
 
 cssA :: Text -> Text -> Asset
-cssA aid ahref = Asset { aid, ahref, amt = "text/css" } 
+cssA aid ahref = Asset { aid, ahref, amt = "text/css", ap = Nothing } 
 
 fontA :: Text -> Text -> Asset
-fontA aid ahref = Asset { aid, ahref, amt = "application/x-font-ttf" } 
+fontA aid ahref = Asset { aid, ahref, amt = "application/x-font-ttf", ap = Nothing } 
 
 audioA :: Text -> Text -> Asset
-audioA aid ahref = Asset { aid, ahref, amt = "audio/mp4" } 
+audioA aid ahref = Asset { aid, ahref, amt = "audio/mp4", ap = Nothing } 
 
 videoA :: Text -> Text -> Asset
-videoA aid ahref = Asset { aid, ahref, amt = "video/mp4" } 
+videoA aid ahref = Asset { aid, ahref, amt = "video/mp4", ap = Nothing } 
 
 pdfA :: Text -> Text -> Asset
-pdfA aid ahref = Asset { aid, ahref, amt = "application/pdf" } 
+pdfA aid ahref = Asset { aid, ahref, amt = "application/pdf", ap = Nothing } 
 
 jpgA :: Text -> Text -> Asset
-jpgA aid ahref = Asset { aid, ahref, amt = "image/jpeg" } 
+jpgA aid ahref = Asset { aid, ahref, amt = "image/jpeg", ap = Nothing } 
 
 pngA :: Text -> Text -> Asset
-pngA aid ahref = Asset { aid, ahref, amt = "image/png" } 
+pngA aid ahref = Asset { aid, ahref, amt = "image/png", ap = Nothing } 
 
 assetXml :: Xml repr => Asset -> repr Element
-assetXml x = element "item" .@ attrs [("id", aid x), ("href", ahref x), ("media-type", amt x)]
+assetXml x = element "item" .@ (attrs [("id", aid x), ("href", ahref x), ("media-type", amt x)] #
+    case ap x of
+        Nothing -> Xml.empty
+        Just p -> attribute "properties" .= value p)
 
 xhtmlA :: Text -> Text -> Text -> XhtmlFile
 xhtmlA xid xhref xtext = XhtmlFile { xid, xhref, xtext, xp = Nothing }
@@ -99,6 +94,9 @@ xhtmlXml x = let
         Nothing -> []
         Just v -> [("properties", v)]
     in element "item" .@ attrs ([("id", xid x), ("href", xhref x), ("media-type", "application/xhtml+xml")] ++ p)
+
+mitem :: Text -> Text -> Text -> Text -> Asset
+mitem aid ahref amt ap = Asset { aid, ahref, amt, ap = Just ap }
 
 manifest :: Xml repr => [Asset] -> [XhtmlFile] -> repr Element
 manifest xs ys = element "manifest" .> foldr (#) Xml.empty (map assetXml xs <> map xhtmlXml ys)
@@ -165,7 +163,7 @@ spine :: Xml repr => [SpineItem] -> repr Element
 spine = (element "spine" .>) . Prelude.foldr (#) Xml.empty . map spiXml
 
 opf :: Xml repr => repr Element -> repr Element -> repr Element -> repr Element
-opf md mf sp = doc $ element "package" .@ attrs [("xmlns","http://www.idpf.org/2007/opf"),("unique-identifier", "bookid-3.3.0") ,("version", "3.3") , ("prefix", "rendition: http://www.idpf.org/vocab/rendition/# ibooks: http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/") , ("xmlns:epub", "http://www.idpf.org/2007/ops") , ("xmlns:ibooks", "http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/")]
+opf md mf sp = doc $ element "package" .@ attrs [("xmlns","http://www.idpf.org/2007/opf"),("unique-identifier", "bookid-3.3.0") ,("version", "3.0") , ("prefix", "rendition: http://www.idpf.org/vocab/rendition/# ibooks: http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/") , ("xmlns:epub", "http://www.idpf.org/2007/ops") , ("xmlns:ibooks", "http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/")]
     .> (md # mf # sp)
 
 metadataXml :: Xml repr => [Metadata] -> repr Element
@@ -174,7 +172,7 @@ metadataXml xs = element "metadata" .@ attrs [("xmlns:opf", "http://www.idpf.org
     where
         meta = \case
             Title s -> element "dc:title" .> string s
-            Identifier s -> element "dc:identifier" .@ (attribute "id" .= value "bookid") .> string s
+            Identifier s -> element "dc:identifier" .@ (attribute "id" .= value "bookid-3.3.0") .> string s
             Lang s -> element "dc:language" .> string s
             Modified s -> element "meta" .@ (attribute "property" .= value "dcterms:modified") .> string s
             Rights s -> element "dc:rights" .> string s
