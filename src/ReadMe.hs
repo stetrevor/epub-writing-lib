@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ReadMe where
-import Xml (Xml (..), Element, view)
+import Xml (Xml (..), Element, view, (#))
 import qualified Data.Text.IO as T
 import qualified Data.Text as T
 
@@ -22,8 +22,6 @@ readme = tpl "ReadMe" (
   # h2 "DSL for XML"
   # pre demo3
   # p2 (s "The DSL uses final encoding. It’s inspired by " # em (ahs "https://hackage.haskell.org/package/type-of-html" "type-of-html") # s ". This dsl defines the syntax in this way: ")
-  )
-  # p2 (c "#" # s " is a combinator for elements and attributions. Although you can use it on " # c "Attribute" # s " or " # c "Value" # s " according to its type, but the interpreter does not guarantee the correct interpretation except for " # c "Element" # s " and " # c "Attribution" # s ". ")
   # p2 (c ".>" # s " is a combinator from a parent element to a child element. ")
   # p2 (c ".@" # s " connects an element with its attributions. ")
   # p2 (c ".=" # s " assigns a value to an attribute. ")
@@ -54,6 +52,7 @@ readme = tpl "ReadMe" (
   # p2 (s "The generated XHTML files contains no indentation or new lines unnecessary. This makes no difference in the epub output. To read the generated files, a formatter from your editor is recommended. And using the " # c "zipF" # s " function provided, the any changes you make in the output folder will make it to the generated epub. ")
 
   # p "Why not formatting the files during generation? XHTML is after all whitespace sensitive. While it&rsquo;s possible to make an educated guess at what tags are not affected by whitespaces, and indent them accordingly, CSS still can alter the display of an element. It is beyond the scope of this project to produce readable XHTML files. Our goal is to produce readable EPUB, with the least amount of pain possible. "
+  )
   where
     tpl t e = dcl $ element "html".@
       attribute "xmlns" .= value "http://www.w3.org/1999/xhtml"

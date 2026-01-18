@@ -7,7 +7,7 @@ import System.Directory (createDirectoryIfMissing, copyFile, listDirectory, does
 import Codec.Archive.Zip (createArchive, addEntry, CompressionMethod (..), mkEntrySelector, packDirRecur, withArchive)
 import System.FilePath (takeDirectory, (</>))
 import Control.Monad (forM_)
-import Xml (view, Xml (..), Element, attrs)
+import Xml (view, Xml (..), Element, attrs, (#))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO as T ( writeFile )
@@ -77,7 +77,7 @@ pngA :: Text -> Text -> Asset
 pngA aid ahref = Asset { aid, ahref, amt = "image/png", ap = Nothing } 
 
 assetXml :: Xml repr => Asset -> repr Element
-assetXml x = element "item" .@ (attrs [("id", aid x), ("href", ahref x), ("media-type", amt x)] #
+assetXml x = element "item" .@ (attrs [("id", aid x), ("href", ahref x), ("media-type", amt x)] .+
     case ap x of
         Nothing -> Xml.empty
         Just p -> attribute "properties" .= value p)
@@ -146,7 +146,7 @@ createFileWithDirs filePath content = do
 
 
 containerXml :: Xml repr => repr Element
-containerXml = dcl $ element "container" .@ (attribute "version" .= value "1.0" # attribute "xmlns" .= value "urn:oasis:names:tc:opendocument:xmlns:container") .> element "rootfiles" .> element "rootfile" .@ (attribute "full-path" .= value "OEBPS/content.opf" # attribute "media-type" .= value "application/oebps-package+xml")
+containerXml = dcl $ element "container" .@ (attribute "version" .= value "1.0" .+ attribute "xmlns" .= value "urn:oasis:names:tc:opendocument:xmlns:container") .> element "rootfiles" .> element "rootfile" .@ (attribute "full-path" .= value "OEBPS/content.opf" .+ attribute "media-type" .= value "application/oebps-package+xml")
 
 spi :: Text -> SpineItem
 spi sid = SpineItem { sid, linear = True }
@@ -157,7 +157,7 @@ spi' sid = SpineItem { sid, linear = False }
 spiXml :: Xml repr => SpineItem -> repr Element
 spiXml x
     | linear x = element "itemref" .@ (attribute "idref" .= value (sid x))
-    | otherwise = element "itemref" .@ (attribute "idref" .= value (sid x) # attribute "linear" .= value "no")
+    | otherwise = element "itemref" .@ (attribute "idref" .= value (sid x) .+ attribute "linear" .= value "no")
 
 spine :: Xml repr => [SpineItem] -> repr Element
 spine = (element "spine" .>) . Prelude.foldr (#) Xml.empty . map spiXml

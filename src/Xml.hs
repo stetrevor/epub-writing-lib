@@ -1,13 +1,15 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 module Xml where
 
-import Data.Text as T ( null, Text )
+import Data.Text as T
 
 class Xml repr where
   dcl :: repr Element -> repr Element
-  (#) :: repr a -> repr a -> repr a
+  (.#) :: repr Element -> repr Element -> repr Element
   (.>) :: repr Element {- parent -} -> repr Element {- child -} -> repr Element
+  (.+) :: repr Attribution -> repr Attribution -> repr Attribution
   (.@) :: repr Element -> repr Attribution -> repr Element
   (.=) :: repr Attribute -> repr Value -> repr Attribution
   element :: Text {- name -} -> repr Element
@@ -21,37 +23,49 @@ data Attribution
 data Attribute
 data Value
 
-infixr 5 #
-infixr 6 .>
-infixr 7 .@
+infixr 4 .#
+infixr 5 .>
+infixr 6 .@
+infixr 7 .+
 infixr 8 .=
 
-newtype S a = S (Text {- name -}, Text {- attribution -}, Text {- children -}) deriving Show
+(#) :: Xml repr => repr Element -> repr Element -> repr Element
+(#) = (.#)
+
+infixr 4 #
+
+data S a = E Text Text Text | AV Text | A Text | V Text | T Text | Z deriving Show
 
 view :: S a -> Text
-view (S (n, nvs, c)) 
-  | T.null n = c
-  | T.null c = "<" <> n <> nvs' <> "/>"
-  | otherwise = "<" <> n <> nvs' <> ">" <> c <> "</" <> n <> ">"
-  where
-    nvs' = if T.null nvs then "" else " " <> nvs
+view = \case
+  E n av c | T.null c -> "<" <> n <> (if T.null av then "" else " " <> av) <> "/>"
+           | otherwise -> "<" <> n <> (if T.null av then "" else " " <> av) <> ">" <> c <> "</" <> n <> ">"
+  AV t -> t
+  A t -> t
+  V t -> t
+  T t -> t
+  Z -> ""
 
 instance Xml S where
-  dcl a = S ("", "", "<?xml version=\"1.0\"?>" <> view a)
-  a@(S (_, a2, _)) # b@(S (_, b2, _)) = S ("", nvs a2 b2, view a <> view b)
-    where
-      nvs :: Text -> Text -> Text
-      nvs "" y = y
-      nvs x "" = x
-      nvs x y = x <> " " <> y
-  S (a1, a2, _) .> b = S (a1, a2, view b)
-  S (a1, _, a3) .@ S (_, b2, _) = S (a1, b2, a3)
-  S (_, _, a) .= S (_, _, b) = S ("", a <> "=\"" <> b <> "\"", "")
-  element n = S (n, "", "")
-  attribute = S . ("", "", )
-  value = S . ("", "", )
-  string = S . ("", "", )
-  empty = S ("", "", "")
+  dcl a = T ("<?xml version=\"1.0\"?>" <> view a)
+  a .# b = T $ view a <> view b
+  E n av _ .> b = E n av (view b)
+  _ .> _ = Z
+  AV a .+ AV b = AV (a <> " " <> b)
+  Z .+ a = a
+  a .+ Z = a
+  _ .+ _ = Z
+  E n _ c.@ AV av = E n av c
+  a .@ Z = a
+  _ .@ _ = Z
+  A a .= V v = AV (a <> "=\"" <> v <> "\"")
+  A a .= Z = AV a
+  _ .= _ = AV "4"
+  element n = E n "" ""
+  attribute = A
+  value = V
+  string = T
+  empty = Z
 
 attrs :: Xml repr => [(Text {- attribute -}, Text {- value -})] -> repr Attribution
-attrs = Prelude.foldr (#) Xml.empty . Prelude.map (\(a, v) -> attribute a .= value v)
+attrs = Prelude.foldr (.+) Xml.empty . Prelude.map (\(a, v) -> attribute a .= value v)
