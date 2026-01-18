@@ -148,7 +148,7 @@ readme = (
        , ""
        , "instance Xml repr => Xml (R repr) where"
        , "  dcl e = R $ unR e >>= return . dcl"
-       , "  a # b = R $ liftA2 (#) (unR a) (unR b)"
+       , "  a .# b = R $ liftA2 (.#) (unR a) (unR b)"
        , "  a .> b = R $ liftA2 (.>) (unR a) (unR b)"
        , "  a .@ b = R $ liftA2 (.@) (unR a) (unR b)"
        , "  a .= b = R $ liftA2 (.=) (unR a) (unR b)"
