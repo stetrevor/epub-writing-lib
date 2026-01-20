@@ -38,13 +38,31 @@ data S a = E Text Text Text | AV Text | A Text | V Text | T Text | Z deriving Sh
 
 view :: S a -> Text
 view = \case
-  E n av c | T.null c -> "<" <> n <> (if T.null av then "" else " " <> av) <> "/>"
+  E n av c | isEmptyElement n -> "<" <> n <> (if T.null av then "" else " " <> av) <> "/>"
            | otherwise -> "<" <> n <> (if T.null av then "" else " " <> av) <> ">" <> c <> "</" <> n <> ">"
   AV t -> t
   A t -> t
   V t -> t
   T t -> t
   Z -> ""
+
+isEmptyElement :: Text -> Bool
+isEmptyElement "area" = True
+isEmptyElement "base" = True
+isEmptyElement "br" = True
+isEmptyElement "col" = True
+isEmptyElement "embed" = True
+isEmptyElement "hr" = True
+isEmptyElement "img" = True
+isEmptyElement "input" = True
+isEmptyElement "keygen" = True
+isEmptyElement "link" = True
+isEmptyElement "meta" = True
+isEmptyElement "param" = True
+isEmptyElement "source" = True
+isEmptyElement "track" = True
+isEmptyElement "wbr" = True
+isEmptyElement _ = False
 
 instance Xml S where
   dcl a = T ("<?xml version=\"1.0\"?>" <> view a)

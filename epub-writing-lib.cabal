@@ -27,7 +27,8 @@ version:         0.1.0.0
 synopsis:        A library to write books in DSL and output to epub3.
 
 -- A longer description of the package.
--- description:
+description:
+  A library to write books in DSL and output to epub3. It provides an embedded DSL for authoring XHTML file contents. It also provides functions to generate the package document and container file required for EPUB files. The DSL can represent everything that's XML. The interpretation of the DSL doesn't limit itself to string output. The EPUB generation is just a thin wrapper to collect output parameters. It needs to know the metadata, the static assets it contains, the XHTML files it contains to generate the package document and put everything in correct folders. Then just zip everything according to EPUB specifications.
 
 -- URL for the project homepage or repository.
 homepage:        https://github.com/stetrevor/epub-writing-lib.git
@@ -51,6 +52,10 @@ build-type:      Simple
 
 -- Extra doc files to be distributed with the package, such as a CHANGELOG or a README.
 extra-doc-files: CHANGELOG.md
+
+source-repository head
+  type:     git
+  location: https://github.com/stetrevor/epub-writing-lib.git
 
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
 -- extra-source-files:
@@ -77,10 +82,10 @@ library
   -- Other library packages from which modules are imported.
   build-depends:
     , base       ^>=4.20.0.0
-    , directory
-    , filepath
-    , text
-    , zip
+    , directory  ^>=1.3.8.3
+    , filepath   ^>=1.5.2.0
+    , text       ^>=2.1.1
+    , zip        ^>=2.2.1
 
   -- Directories containing source files.
   hs-source-dirs:   src
